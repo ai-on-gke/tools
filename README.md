@@ -15,4 +15,4 @@ This repository adheres to the governance principles outlined for the AI-on-GKE 
 *   **Ownership**: This repository is maintained by [GKE AI Tools (for gke-disk-image-builder)]. It is intended to host tools congruent with the scope of the AI-on-GKE organization, which focuses on public reference materials and examples for running AI workloads on GKE.
 
 ### Contributing
-We'd love to accept your patches and contributions to this project. Please follow the GKE AI Tools [Contribution Guidelines](https://github.com/ai-on-gke/website/blob/main/CONTRIBUTING.md).
+We'd love to accept your patches and contributions to this project. Please follow the GKE AI Labs [Contribution Guidelines](https://github.com/ai-on-gke/website/blob/main/CONTRIBUTING.md).
