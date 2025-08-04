@@ -45,6 +45,7 @@ var (
 func main() {
 	var containerImages stringSlice
 	var imageLabels stringSlice
+	var storageLocations stringSlice
 	projectName := flag.String("project-name", "", "name of a gcp project where the script will be run")
 	imageName := flag.String("image-name", "", "name of the image that will be generated")
 	imageFamilyName := flag.String("image-family-name", "secondary-disk-image", "name of the image family associated with the created disk image")
@@ -64,6 +65,7 @@ func main() {
 	verifyOnly := flag.Bool("verify-only", false, "Only verifies the disk image provided in image-name, and does not generate any image.")
 	flag.Var(&imageLabels, "image-labels", "labels tagged to the disk image. This flag can be specified multiple times. The accepted format is `--image-labels=key=val`.")
 	flag.Var(&containerImages, "container-image", "container image to include in the disk image. This flag can be specified multiple times")
+	flag.Var(&storageLocations, "storage-location", "The location to store the final image. If left blank, Compute Engine stores your image in the multi-region closest to the image source. This flag can be specified multiple times")
 
 	flag.Parse()
 	ctx := context.Background()
@@ -114,6 +116,7 @@ func main() {
 		Network:               fmt.Sprintf("projects/%s/global/networks/%s", *projectName, *network),
 		Subnet:                fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", *projectName, regionForZone(*zone), *subnet),
 		ContainerImages:       containerImages,
+		StorageLocations:      storageLocations,
 		Timeout:               td,
 		ImagePullAuth:         auth,
 		ImageLabels:           imageLabels,

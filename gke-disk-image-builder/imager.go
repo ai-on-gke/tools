@@ -60,6 +60,7 @@ type Request struct {
 	Network               string
 	Subnet                string
 	ContainerImages       []string
+	StorageLocations      []string
 	Timeout               time.Duration
 	ImagePullAuth         ImagePullAuthMechanism
 	ImageLabels           []string
@@ -247,10 +248,11 @@ func GenerateDiskImage(ctx context.Context, req Request) error {
 							},
 						},
 						Image: compute.Image{
-							Name:       req.ImageName,
-							SourceDisk: fmt.Sprintf("%s-disk", req.JobName),
-							Family:     req.ImageFamilyName,
-							Labels:     imageLabels,
+							Name:             req.ImageName,
+							SourceDisk:       fmt.Sprintf("%s-disk", req.JobName),
+							Family:           req.ImageFamilyName,
+							Labels:           imageLabels,
+							StorageLocations: req.StorageLocations,
 						},
 					},
 				},
