@@ -20,6 +20,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -40,6 +42,7 @@ func (s *stringSlice) Set(value string) error {
 
 var (
 	gcpResourceNameRegex = regexp.MustCompile("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+	k8sNamespaceRegex    = regexp.MustCompile("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
 )
 
 func main() {
@@ -63,6 +66,9 @@ func main() {
 	subnet := flag.String("subnet", "default", "subnet to be used by GCE resources used for disk image creation.")
 	storeSnapshotCheckSum := flag.Bool("store-snapshot-checksum", true, "calculate and store checksums of every snapshot directory.")
 	verifyOnly := flag.Bool("verify-only", false, "Only verifies the disk image provided in image-name, and does not generate any image.")
+	k8sManifestsFilepath := flag.String("k8s-manifests-filepath", "", "Specifies the file path where the tool will save the generated Kubernetes VolumeSnapshot and VolumeSnapshotContent manifests.")
+	k8sNamespace := flag.String("k8s-namespace", "default", "Specifies the Kubernetes namespace for the generated VolumeSnapshot manifest.")
+
 	flag.Var(&imageLabels, "image-labels", "labels tagged to the disk image. This flag can be specified multiple times. The accepted format is `--image-labels=key=val`.")
 	flag.Var(&containerImages, "container-image", "container image to include in the disk image. This flag can be specified multiple times")
 	flag.Var(&storageLocations, "storage-location", "The location to store the final image. If left blank, Compute Engine stores your image in the multi-region closest to the image source. This flag can be specified multiple times")
@@ -80,13 +86,31 @@ func main() {
 		log.Panicf("invalid argument, job-name: %v should be less than 50 characters, got: %v", *jobName, len(*jobName))
 	}
 	if !gcpResourceNameRegex.MatchString(*jobName) {
-		log.Panicf("invalid argument, job-name: %v must conform to `^[a-z]([-a-z0-9]*[a-z0-9])?`")
+		log.Panicf("invalid argument, job-name: %v must conform to `^[a-z]([-a-z0-9]*[a-z0-9])?`", *jobName)
+	}
+	if len(*imageName) == 0 || len(*imageName) >= 64 {
+		log.Panicf("invalid argument, image-name: %v should be between 1 and 63 characters, got: %v", *imageName, len(*imageName))
+	}
+	if !gcpResourceNameRegex.MatchString(*imageName) {
+		log.Panicf("invalid argument, image-name: %v must conform to `^[a-z]([-a-z0-9]*[a-z0-9])?`", *imageName)
 	}
 	if len(*imageFamilyName) >= 64 {
 		log.Panicf("invalid argument, image-family-name: %v should be less than 64 characters, got: %v", *imageFamilyName, len(*imageFamilyName))
 	}
 	if !gcpResourceNameRegex.MatchString(*imageFamilyName) {
 		log.Panicf("invalid argument, image-family-name: %v must conform to `^[a-z]([-a-z0-9]*[a-z0-9])?`", *imageFamilyName)
+	}
+	if *k8sManifestsFilepath != "" {
+		parentDir := filepath.Dir(*k8sManifestsFilepath)
+		if _, err := os.Stat(parentDir); os.IsNotExist(err) {
+			log.Panicf("invalid argument, k8s-manifests-filepath parent directory %q does not exist: %v", parentDir, err)
+		}
+		if len(*k8sNamespace) == 0 || len(*k8sNamespace) > 63 {
+			log.Panicf("invalid argument, k8s-namespace: %v should be between 1 and 63 characters, got: %v", *k8sNamespace, len(*k8sNamespace))
+		}
+		if !k8sNamespaceRegex.MatchString(*k8sNamespace) {
+			log.Panicf("invalid argument, k8s-namespace: %v must conform to `^[a-z0-9]([-a-z0-9]*[a-z0-9])?`", *k8sNamespace)
+		}
 	}
 
 	var auth builder.ImagePullAuthMechanism
@@ -121,6 +145,8 @@ func main() {
 		ImagePullAuth:         auth,
 		ImageLabels:           imageLabels,
 		StoreSnapshotCheckSum: *storeSnapshotCheckSum,
+		K8sManifestsFilepath:  *k8sManifestsFilepath,
+		K8sNamespace:          *k8sNamespace,
 	}
 
 	if *verifyOnly {
@@ -135,6 +161,13 @@ func main() {
 		log.Panicf("unable to generate disk image: %v", err)
 	}
 	fmt.Printf("Image has successfully been created at: projects/%s/global/images/%s\n", req.ProjectName, req.ImageName)
+
+	if req.K8sManifestsFilepath != "" {
+		if err := builder.WriteK8sManifests(req); err != nil {
+			log.Panicf("unable to write k8s manifests: %v", err)
+		}
+		fmt.Printf("Kubernetes manifests generated at: %s\n", req.K8sManifestsFilepath)
+	}
 }
 
 // regionForZone returns the region for a given zone (e.g. "us-central1-c" -> "us-central1").

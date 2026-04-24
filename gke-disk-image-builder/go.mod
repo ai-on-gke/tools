@@ -1,7 +1,8 @@
 module github.com/GoogleCloudPlatform/ai-on-gke/gke-disk-image-builder
 
-go 1.21
-toolchain go1.24.1
+go 1.23.0
+
+toolchain go1.24.13
 
 require (
 	github.com/GoogleCloudPlatform/compute-daisy v0.0.0-20230929171844-6a3c47dc7a4f
