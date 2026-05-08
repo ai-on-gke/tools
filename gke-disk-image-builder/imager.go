@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -66,6 +67,51 @@ type Request struct {
 	ImageLabels           []string
 	ServiceAccount        string
 	StoreSnapshotCheckSum bool
+	K8sManifestsFilepath  string
+	K8sNamespace          string
+}
+
+// WriteK8sManifests generates the VolumeSnapshot and VolumeSnapshotContent YAML files
+// derived from the GCE Disk Image URI.
+func WriteK8sManifests(req Request) error {
+	if req.K8sManifestsFilepath == "" {
+		return nil
+	}
+
+	parentDir := filepath.Dir(req.K8sManifestsFilepath)
+	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
+		return fmt.Errorf("parent directory %q does not exist: %w", parentDir, err)
+	}
+
+	vscName := fmt.Sprintf("%s-vsc", req.ImageName)
+	vsName := fmt.Sprintf("%s-vs", req.ImageName)
+	// The handle points to the global GCE Disk Image URI.
+	imageURI := fmt.Sprintf("projects/%s/global/images/%s", req.ProjectName, req.ImageName)
+
+	manifest := fmt.Sprintf(`apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotContent
+metadata:
+  name: %s
+spec:
+  deletionPolicy: Retain
+  driver: pd.csi.storage.gke.io
+  source:
+    snapshotHandle: %s
+  volumeSnapshotRef:
+    name: %s
+    namespace: %s
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  source:
+    volumeSnapshotContentName: %s
+`, vscName, imageURI, vsName, req.K8sNamespace, vsName, req.K8sNamespace, vscName)
+
+	return os.WriteFile(req.K8sManifestsFilepath, []byte(manifest), 0644)
 }
 
 func buildDiskStartupScript(req Request) (*os.File, error) {

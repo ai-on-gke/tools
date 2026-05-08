@@ -62,6 +62,9 @@ Flag                | Required | Default | Description
 *--network*         | No       | 'default'   | VPC network used by the GCE resources used for creating the disk image.
 *--subnet*          | No       | 'default'   | Subnet used by the GCE resources used for creating the disk image.
 *--service-account* | No       | 'default'   | Service Account email assigned to the GCE instance used for creating the disk image.
+*--k8s-manifests-filepath* | No  | nil     | Specifies the file path where the tool will save the generated Kubernetes VolumeSnapshot and VolumeSnapshotContent manifests.
+*--k8s-namespace*   | No       | 'default' | Specifies the Kubernetes namespace for the generated VolumeSnapshot manifest.
+
 
 ### Go
 
@@ -240,3 +243,22 @@ go run ./cli \
     --image-labels=band=ac-dc \
     --image-labels=theory=ramsey_theory
 ```
+
+### Generate Kubernetes manifests derived from the disk image
+
+Use the `--k8s-manifests-filepath` flag to specify a file path where the tool will save the generated Kubernetes `VolumeSnapshot` and `VolumeSnapshotContent` manifests. You can also specify a custom namespace with the `--k8s-namespace` flag:
+
+```shell
+go run ./cli \
+    --project-name=my-gke-project \
+    --image-name=my-secondary-disk-image \
+    --zone=us-central1-c \
+    --gcs-path=gs://my-gke-project-logs \
+    --disk-size-gb=20 \
+    --container-image=docker.io/library/python:3.11.7-slim-bookworm \
+    --container-image=docker.io/library/nginx:1.25.3 \
+    --timeout=30m \
+    --k8s-manifests-filepath=./image_handles.yaml \
+    --k8s-namespace=my-namespace
+```
+
