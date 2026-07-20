@@ -44,6 +44,7 @@ func (s *stringSlice) Set(value string) error {
 var (
 	gcpResourceNameRegex = regexp.MustCompile("^[a-z]([-a-z0-9]*[a-z0-9])?$")
 	k8sNamespaceRegex    = regexp.MustCompile("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
+	containerImageRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9._-]*[a-z0-9])?(:[0-9]+)?(/[a-z0-9._/-]*[a-z0-9])?(:[A-Za-z0-9._-]{1,128})?(@sha256:[a-f0-9]{64})?$`)
 )
 
 func main() {
@@ -121,6 +122,11 @@ func main() {
 		}
 		if !k8sNamespaceRegex.MatchString(*k8sNamespace) {
 			log.Panicf("invalid argument, k8s-namespace: %v must conform to `^[a-z0-9]([-a-z0-9]*[a-z0-9])?`", *k8sNamespace)
+		}
+	}
+	for _, img := range containerImages {
+		if !containerImageRegex.MatchString(img) {
+			log.Panicf("invalid argument, --container-image %q: must be a valid OCI image reference", img)
 		}
 	}
 

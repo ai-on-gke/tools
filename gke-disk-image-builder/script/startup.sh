@@ -84,7 +84,7 @@ function pull_images() {
   for param in "$@"; do
     echo Start pulling $param ...
     if [ "$OAUTH_MECHANISM" == "none" ]; then
-      sudo ctr -n k8s.io image pull --hosts-dir "/etc/containerd/certs.d" $param
+      sudo ctr -n k8s.io image pull --hosts-dir "/etc/containerd/certs.d" "$param"
     elif [ "$OAUTH_MECHANISM" == "serviceaccounttoken" ]; then
       sudo ctr -n k8s.io image pull --hosts-dir "/etc/containerd/certs.d" --user "oauth2accesstoken:$ACCESS_TOKEN" $param
     elif [ "$OAUTH_MECHANISM" == "registrycredentials" ]; then
@@ -197,10 +197,10 @@ function unpack() {
   shift
 
   # Pull all the given images.
-  pull_images $@
+  pull_images "$@"
 
   # Write image info to disk image.
-  write_image_info $@
+  write_image_info "$@"
 
   # Process the snapshots.
   process_snapshots
@@ -208,7 +208,7 @@ function unpack() {
   # Remove the original pulled images.
   for img in "${@}"; do
     echo Removing the original pulled image $img ...
-    sudo ctr -n k8s.io image rm $img
+    sudo ctr -n k8s.io image rm "$img"
   done
 
   echo Content of snapshots.metadata file:

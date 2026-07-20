@@ -1,7 +1,9 @@
 package imager
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -93,5 +95,78 @@ func TestWriteK8sManifests_ParentDirDoesNotExist(t *testing.T) {
 	expectedErrMsg := "parent directory \"/nonexistent-dir-12345\" does not exist"
 	if !strings.Contains(err.Error(), expectedErrMsg) {
 		t.Errorf("Expected error message containing %q, got %q", expectedErrMsg, err.Error())
+	}
+}
+
+func TestBuildDiskStartupScriptValidImage(t *testing.T) {
+	req := Request{
+		ContainerImages:       []string{"ubuntu:latest", "gcr.io/test-project/test-image:v1"},
+		StoreSnapshotCheckSum: true,
+		ImagePullAuth:         None,
+	}
+	f, err := buildDiskStartupScript(req)
+	if err != nil {
+		t.Fatalf("buildDiskStartupScript failed: %v", err)
+	}
+	defer os.Remove(f.Name())
+	defer f.Close()
+
+	contentBytes, err := os.ReadFile(f.Name())
+	if err != nil {
+		t.Fatalf("failed to read generated script: %v", err)
+	}
+	content := string(contentBytes)
+	expectedSuffix := "\n\nunpack true None 'ubuntu:latest' 'gcr.io/test-project/test-image:v1'"
+	if !strings.HasSuffix(content, expectedSuffix) {
+		t.Errorf("expected script to end with %q, but got %q", expectedSuffix, content)
+	}
+}
+
+// TestBuildDiskStartupScriptShellInjectionNeutralized tests that shell command
+// injection payloads in container image references are neutralized by being
+// safely single-quoted.
+func TestBuildDiskStartupScriptShellInjectionNeutralized(t *testing.T) {
+	req := Request{
+		JobName:               "test-job",
+		ContainerImages:       []string{"ubuntu:latest;id>/tmp/PWNED;#"},
+		StoreSnapshotCheckSum: true,
+		ImagePullAuth:         None,
+	}
+	f, err := buildDiskStartupScript(req)
+	if err != nil {
+		t.Fatalf("buildDiskStartupScript failed: %v", err)
+	}
+	scriptPath := f.Name()
+	f.Close()
+	defer os.Remove(scriptPath)
+
+	contentBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("failed to read generated script: %v", err)
+	}
+	content := string(contentBytes)
+	
+	expectedSuffix := "\n\nunpack true None 'ubuntu:latest;id>/tmp/PWNED;#'"
+	if !strings.HasSuffix(content, expectedSuffix) {
+		t.Errorf("expected script to end with %q, but got %q", expectedSuffix, content)
+	}
+
+	lines := strings.Split(content, "\n")
+	last := lines[len(lines)-1]
+
+	// Part B: Execution check. Run the generated line under bash with unpack stubbed
+	// and verify that `/tmp/PWNED` is NOT created.
+	pwnedFile := "/tmp/PWNED"
+	_ = os.Remove(pwnedFile) // ensure it doesn't exist beforehand
+	defer os.Remove(pwnedFile)
+
+	cmdStr := fmt.Sprintf("unpack() { :; }\n%s", last)
+	cmd := exec.Command("bash", "-c", cmdStr)
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("failed to run shell execution check: %v", err)
+	}
+
+	if _, err := os.Stat(pwnedFile); !os.IsNotExist(err) {
+		t.Fatalf("injection execution check failed: %s was created, meaning command injection succeeded!", pwnedFile)
 	}
 }

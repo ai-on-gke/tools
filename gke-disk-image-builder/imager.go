@@ -53,25 +53,25 @@ const (
 
 // Request contains the required input for the disk image generation.
 type Request struct {
-	ImageName             string
-	ImageFamilyName       string
-	ProjectName           string
-	JobName               string
-	Zone                  string
-	GCSPath               string
-	MachineType           string
-	DiskType              string
-	DiskSizeGB            int64
-	GCPOAuth              string
-	Network               string
-	Subnet                string
-	ContainerImages       []string
-	StorageLocations      []string
-	Timeout               time.Duration
-	ImagePullAuth         ImagePullAuthMechanism
+	ImageName        string
+	ImageFamilyName  string
+	ProjectName      string
+	JobName          string
+	Zone             string
+	GCSPath          string
+	MachineType      string
+	DiskType         string
+	DiskSizeGB       int64
+	GCPOAuth         string
+	Network          string
+	Subnet           string
+	ContainerImages  []string
+	StorageLocations []string
+	Timeout          time.Duration
+	ImagePullAuth    ImagePullAuthMechanism
 	// RegistryCredentials is a user:password string passed to `ctr image pull --user`.
 	// It is only used when ImagePullAuth == RegistryCredentials.
-	RegistryCredentials string
+	RegistryCredentials   string
 	ImageLabels           []string
 	ServiceAccount        string
 	StoreSnapshotCheckSum bool
@@ -141,7 +141,13 @@ func buildDiskStartupScript(req Request) (*os.File, error) {
 	if _, err = io.Copy(concreteStartupScript, startupScriptTemplate); err != nil {
 		return nil, fmt.Errorf("unable to create the concrete startup file suceesfully, err: %v", err)
 	}
-	images := strings.Join(req.ContainerImages, " ")
+	quoted := make([]string, 0, len(req.ContainerImages))
+	for _, img := range req.ContainerImages {
+		// We assume the container images have been validated by the CLI (cli/main.go),
+		// which ensures they do not contain single quotes or other shell metacharacters.
+		quoted = append(quoted, "'"+img+"'")
+	}
+	images := strings.Join(quoted, " ")
 	// Expose the (optional) registry credential as a shell global the startup
 	// script's pull_images function reads. It is emitted unconditionally (empty
 	// when unused) so the positional contract of the unpack call below is
