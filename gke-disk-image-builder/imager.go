@@ -269,7 +269,7 @@ func GenerateDiskImage(ctx context.Context, req Request) error {
 									InitializeParams: &compute.AttachedDiskInitializeParams{
 										DiskSizeGb:  req.DiskSizeGB,
 										DiskType:    fmt.Sprintf("projects/%s/zones/%s/diskTypes/%s", req.ProjectName, req.Zone, req.DiskType),
-										SourceImage: "projects/debian-cloud/global/images/debian-11-bullseye-v20230912",
+										SourceImage: "projects/debian-cloud/global/images/debian-12-bookworm-v20260609",
 									},
 								},
 								&compute.AttachedDisk{
@@ -405,7 +405,7 @@ func VerifyDiskImage(ctx context.Context, req Request) error {
 									InitializeParams: &compute.AttachedDiskInitializeParams{
 										DiskSizeGb:  req.DiskSizeGB,
 										DiskType:    fmt.Sprintf("projects/%s/zones/%s/diskTypes/%s", req.ProjectName, req.Zone, req.DiskType),
-										SourceImage: "projects/debian-cloud/global/images/debian-11-bullseye-v20230912",
+										SourceImage: "projects/debian-cloud/global/images/debian-12-bookworm-v20260609",
 									},
 								},
 								&compute.AttachedDisk{
