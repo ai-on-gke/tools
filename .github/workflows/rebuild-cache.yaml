@@ -33,8 +33,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ env.GCP_SA }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SA }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -53,7 +53,7 @@ jobs:
           fi
           cd gke-tools/gke-disk-image-builder
           go run ./cli \
-          --project-name="${{ env.GCP_PROJECT_ID }}" \
+          --project-name="${{ vars.GCP_PROJECT_ID }}" \
           --image-name="analyser-cache-$(date +%Y%m%d)-$(openssl rand -hex 6)" \
           --zone=europe-west1-c \
           --image-pull-auth=RegistryCredentials \
